@@ -1,0 +1,190 @@
+classDiagram
+    class User {
+        +user_id: UUID
+        +email: string
+        +username: string
+        +created_at: datetime
+        +preferences: UserPreferences
+        +privacy_settings: PrivacySettings
+        +__init__(email: str, username: str)
+        +update_preferences(preferences: dict) bool
+        +get_analysis_history() List[Analysis]
+    }
+
+    class UserPreferences {
+        +skin_tone_preference: string
+        +beauty_style: string
+        +brand_preferences: List[string]
+        +budget_range: tuple
+        +allergies: List[string]
+        +__init__(user_id: UUID)
+        +update_preferences(data: dict) bool
+    }
+
+    class Analysis {
+        +analysis_id: UUID
+        +user_id: UUID
+        +image_url: string
+        +video_url: string
+        +analysis_type: AnalysisType
+        +facial_features: FacialFeatures
+        +recommendations: List[Recommendation]
+        +health_insights: HealthInsights
+        +confidence_score: float
+        +created_at: datetime
+        +__init__(user_id: UUID, media_url: str, analysis_type: AnalysisType)
+        +process_analysis() bool
+        +get_recommendations() List[Recommendation]
+    }
+
+    class FacialFeatures {
+        +landmarks: List[Point2D]
+        +face_shape: FaceShape
+        +skin_tone: SkinTone
+        +eye_shape: EyeShape
+        +lip_shape: LipShape
+        +facial_geometry: FacialGeometry
+        +skin_condition: SkinCondition
+        +__init__(landmarks: List[Point2D])
+        +extract_features() dict
+        +calculate_proportions() FacialGeometry
+    }
+
+    class FaceDetectionService {
+        +model: CNNModel
+        +landmark_detector: MediaPipeFace
+        +__init__(model_path: str)
+        +detect_faces(image: np.ndarray) List[BoundingBox]
+        +extract_landmarks(image: np.ndarray, face_box: BoundingBox) List[Point2D]
+        +normalize_image(image: np.ndarray) np.ndarray
+        +preprocess_image(image: np.ndarray) np.ndarray
+    }
+
+    class FeatureExtractionService {
+        +cnn_model: ResNetModel
+        +temporal_analyzer: TemporalCNN
+        +__init__(model_config: dict)
+        +extract_spatial_features(image: np.ndarray, landmarks: List[Point2D]) np.ndarray
+        +extract_temporal_features(video_frames: List[np.ndarray]) np.ndarray
+        +analyze_facial_regions(image: np.ndarray, landmarks: List[Point2D]) dict
+        +extract_facial_action_units(image: np.ndarray) List[FAU]
+    }
+
+    class RecommendationEngine {
+        +product_database: ProductDatabase
+        +ml_model: RecommendationModel
+        +__init__(db_connection: str, model_path: str)
+        +generate_recommendations(features: FacialFeatures, preferences: UserPreferences) List[Recommendation]
+        +match_skin_tone(skin_tone: SkinTone) List[Product]
+        +calculate_compatibility_score(product: Product, features: FacialFeatures) float
+        +filter_by_preferences(products: List[Product], preferences: UserPreferences) List[Product]
+    }
+
+    class HealthAnalysisService {
+        +health_model: HealthCNN
+        +__init__(model_path: str)
+        +analyze_skin_health(image: np.ndarray, landmarks: List[Point2D]) HealthInsights
+        +detect_skin_conditions(skin_regions: List[np.ndarray]) List[SkinCondition]
+        +generate_wellness_suggestions(health_data: HealthInsights) List[WellnessSuggestion]
+        +assess_fatigue_indicators(facial_features: FacialFeatures) FatigueLevel
+    }
+
+    class ChatbotService {
+        +nlp_model: NLPModel
+        +conversation_manager: ConversationManager
+        +__init__(model_config: dict)
+        +process_message(user_id: UUID, message: str) ChatResponse
+        +handle_file_upload(user_id: UUID, file: UploadedFile) AnalysisResponse
+        +generate_response(context: ConversationContext) str
+        +extract_intent(message: str) Intent
+    }
+
+    class MediaProcessingService {
+        +image_processor: ImageProcessor
+        +video_processor: VideoProcessor
+        +__init__(storage_config: dict)
+        +process_image_upload(file: UploadedFile) ProcessedImage
+        +process_video_upload(file: UploadedFile) ProcessedVideo
+        +validate_file_format(file: UploadedFile) bool
+        +extract_video_frames(video_path: str) List[np.ndarray]
+        +compress_media(media_path: str) str
+    }
+
+    class Product {
+        +product_id: UUID
+        +brand: string
+        +name: string
+        +category: ProductCategory
+        +shades: List[Shade]
+        +ingredients: List[string]
+        +price: decimal
+        +rating: float
+        +__init__(brand: str, name: str, category: ProductCategory)
+        +get_compatible_shades(skin_tone: SkinTone) List[Shade]
+        +check_allergen_compatibility(allergies: List[string]) bool
+    }
+
+    class Recommendation {
+        +recommendation_id: UUID
+        +product: Product
+        +shade: Shade
+        +confidence_score: float
+        +reason: string
+        +application_tips: string
+        +__init__(product: Product, confidence: float, reason: str)
+        +generate_explanation() str
+    }
+
+    class APIController {
+        +face_detection_service: FaceDetectionService
+        +feature_extraction_service: FeatureExtractionService
+        +recommendation_engine: RecommendationEngine
+        +health_analysis_service: HealthAnalysisService
+        +chatbot_service: ChatbotService
+        +__init__(services: dict)
+        +analyze_image(request: AnalysisRequest) AnalysisResponse
+        +analyze_video(request: VideoAnalysisRequest) AnalysisResponse
+        +get_recommendations(analysis_id: UUID) RecommendationResponse
+        +chat_interaction(request: ChatRequest) ChatResponse
+        +upload_media(file: UploadedFile) UploadResponse
+    }
+
+    class WebSocketManager {
+        +active_connections: dict
+        +__init__()
+        +connect(websocket: WebSocket, user_id: UUID) bool
+        +disconnect(user_id: UUID) bool
+        +send_progress_update(user_id: UUID, progress: ProgressUpdate) bool
+        +broadcast_analysis_complete(user_id: UUID, result: AnalysisResult) bool
+    }
+
+    class DatabaseManager {
+        +connection: PostgreSQLConnection
+        +redis_client: RedisClient
+        +__init__(db_config: dict, redis_config: dict)
+        +save_analysis(analysis: Analysis) bool
+        +get_user_history(user_id: UUID) List[Analysis]
+        +cache_recommendations(user_id: UUID, recommendations: List[Recommendation]) bool
+        +get_cached_recommendations(user_id: UUID) List[Recommendation]
+    }
+
+    %% Relationships
+    User ||--o{ Analysis : creates
+    User ||--|| UserPreferences : has
+    Analysis ||--|| FacialFeatures : contains
+    Analysis ||--o{ Recommendation : generates
+    Analysis ||--|| HealthInsights : includes
+    FaceDetectionService --> FeatureExtractionService : feeds_data
+    FeatureExtractionService --> RecommendationEngine : provides_features
+    FeatureExtractionService --> HealthAnalysisService : provides_features
+    RecommendationEngine --> Product : queries
+    Product ||--o{ Recommendation : generates
+    APIController --> FaceDetectionService : uses
+    APIController --> FeatureExtractionService : uses
+    APIController --> RecommendationEngine : uses
+    APIController --> HealthAnalysisService : uses
+    APIController --> ChatbotService : uses
+    ChatbotService --> MediaProcessingService : delegates_upload
+    DatabaseManager --> Analysis : persists
+    DatabaseManager --> User : manages
+    WebSocketManager --> APIController : notifies_progress

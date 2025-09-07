@@ -1,0 +1,109 @@
+sequenceDiagram
+    participant U as User/Frontend
+    participant WS as WebSocket
+    participant API as APIController
+    participant MP as MediaProcessingService
+    participant FD as FaceDetectionService
+    participant FE as FeatureExtractionService
+    participant RE as RecommendationEngine
+    participant HA as HealthAnalysisService
+    participant CB as ChatbotService
+    participant DB as DatabaseManager
+    participant S3 as AWS S3 Storage
+
+    %% User uploads image through chatbot
+    U->>+API: POST /api/chat/upload (image_file)
+    API->>+MP: process_image_upload(file)
+    MP->>+S3: upload_file(processed_image)
+    S3-->>-MP: return file_url
+    MP-->>-API: ProcessedImage(url, metadata)
+    
+    %% Establish WebSocket for real-time updates
+    U->>+WS: connect(user_id)
+    WS-->>-U: connection_established
+    
+    %% Start analysis pipeline
+    API->>+CB: handle_file_upload(user_id, file)
+    CB->>+API: analyze_image(image_url, user_id)
+    API->>WS: send_progress_update(user_id, "Starting analysis...")
+    
+    %% Face detection phase
+    API->>+FD: detect_faces(image)
+    FD->>FD: preprocess_image(image)
+    FD->>FD: normalize_image(image)
+    FD->>FD: model.predict(image)
+    FD-->>-API: List[BoundingBox], List[landmarks]
+    API->>WS: send_progress_update(user_id, "Face detected, extracting features...")
+    
+    %% Feature extraction phase
+    API->>+FE: extract_spatial_features(image, landmarks)
+    FE->>FE: cnn_model.forward(image_regions)
+    FE->>FE: analyze_facial_regions(image, landmarks)
+    FE->>FE: extract_facial_action_units(image)
+    FE-->>-API: FacialFeatures(landmarks, geometry, skin_data)
+    API->>WS: send_progress_update(user_id, "Features extracted, generating recommendations...")
+    
+    %% Parallel processing: Recommendations and Health Analysis
+    par Recommendation Generation
+        API->>+RE: generate_recommendations(features, user_preferences)
+        RE->>RE: match_skin_tone(features.skin_tone)
+        RE->>RE: filter_by_preferences(products, preferences)
+        RE->>RE: calculate_compatibility_scores(products, features)
+        RE-->>-API: List[Recommendation]
+    and Health Analysis
+        API->>+HA: analyze_skin_health(image, landmarks)
+        HA->>HA: detect_skin_conditions(skin_regions)
+        HA->>HA: assess_fatigue_indicators(features)
+        HA->>HA: generate_wellness_suggestions(health_data)
+        HA-->>-API: HealthInsights
+    end
+    
+    %% Save analysis results
+    API->>+DB: save_analysis(Analysis(features, recommendations, health_insights))
+    DB->>DB: insert_analysis_record()
+    DB->>DB: cache_recommendations(user_id, recommendations)
+    DB-->>-API: analysis_id
+    
+    %% Generate chatbot response
+    API->>+CB: generate_response(analysis_results, user_context)
+    CB->>CB: format_analysis_summary(features, recommendations)
+    CB->>CB: create_interactive_response(recommendations)
+    CB-->>-API: ChatResponse(message, analysis_summary)
+    
+    %% Send final results
+    API->>WS: broadcast_analysis_complete(user_id, full_results)
+    API-->>-U: AnalysisResponse(analysis_id, summary, recommendations)
+    
+    %% User requests detailed view
+    U->>+API: GET /api/analysis/{analysis_id}/details
+    API->>+DB: get_analysis_details(analysis_id)
+    DB-->>-API: Analysis(full_data)
+    API-->>-U: DetailedAnalysisResponse
+    
+    %% User interacts with chatbot for follow-up
+    U->>+API: POST /api/chat/message
+    API->>+CB: process_message(user_id, "Tell me more about the lipstick recommendation")
+    CB->>CB: extract_intent(message)
+    CB->>+DB: get_cached_recommendations(user_id)
+    DB-->>-CB: List[Recommendation]
+    CB->>CB: generate_detailed_explanation(lipstick_recommendation)
+    CB-->>-API: ChatResponse
+    API-->>-U: ChatResponse
+    
+    %% Video analysis flow (if video uploaded)
+    Note over U,S3: Video Analysis Flow
+    U->>+API: POST /api/chat/upload (video_file)
+    API->>+MP: process_video_upload(file)
+    MP->>MP: extract_video_frames(video)
+    MP->>+S3: upload_file(processed_video)
+    S3-->>-MP: return file_url
+    MP-->>-API: ProcessedVideo(url, frames, metadata)
+    
+    API->>+FE: extract_temporal_features(video_frames)
+    FE->>FE: temporal_analyzer.process_sequence(frames)
+    FE->>FE: analyze_expression_changes(frames)
+    FE-->>-API: TemporalFeatures(movement_patterns, expressions)
+    
+    %% Continue with recommendation and health analysis as above
+    API->>RE: generate_recommendations(spatial_features + temporal_features)
+    API->>HA: analyze_dynamic_health_indicators(temporal_features)
